@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network-LAN-Device-Map-and-Investigation-Tool</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: Arial, sans-serif;
+        }
+        
+        table {
+            width: 80%;
+            border-collapse: collapse;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: center;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        pre {
+            width: 80%;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            text-align: left;
+        }
+        
+        img {
+            max-width: 100%;
+            height: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Network Scanner</h1>
+    <form method="POST">
+        <label for="ip_range">Enter IP Range:</label>
+        <input type="text" id="ip_range" name="ip_range" required>
+        <button type="submit">Scan</button>
+    </form>
+
+    {% if devices %}
+        <h2>Discovered Devices</h2>
+        <table border="1">
+            <tr>
+                <th>IP Address</th>
+                <th>MAC Address</th>
+                <th>Hostname</th>
+                <th>Vendor</th>
+            </tr>
+            {% for device in devices %}
+            <tr>
+                <td>{{ device.ip_address }}</td>
+                <td>{{ device.mac_address }}</td>
+                <td>{{ device.hostname }}</td>
+                <td>{{ device.vendor }}</td>
+            </tr>
+            {% endfor %}
+        </table>
+
+        <h2>Windows IP Configuration (Active Network)</h2>
+        <pre>{{ network_info }}</pre>
+
+        <h2>IPv4 Route Table (Active Routes)</h2>
+        <pre>{{ routing_table }}</pre>
+
+        <h2>Nmap Output</h2>
+        <pre>{{ nmap_output }}</pre>
+
+        <h2>Network Diagram</h2>
+        <img src="{{ url_for('static', filename='network_diagram.png') }}" alt="Network Diagram">
+    {% endif %}
+</body>
+</html>

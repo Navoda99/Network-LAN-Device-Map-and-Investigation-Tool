@@ -4,8 +4,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
-import time
-from flask import Flask, render_template, request
+from flask import Flask, render_template
 
 app = Flask(__name__)
 
@@ -96,14 +95,13 @@ def add_device_images(G, pos, ax, default_image_path):
             print(f"Warning: Image file '{img_path}' not found.")
 
 def get_network_information():
-    """Get network configuration information for the active network."""
-    result = subprocess.run(['ipconfig', '/all'], capture_output=True, text=True)
+    """Get Windows IP configuration information for the active network."""
+    result = subprocess.run(['ipconfig'], capture_output=True, text=True)
     lines = result.stdout.split('\n')
     active_network_info = []
     for line in lines:
-        if "Media State" in line and "Media disconnected" not in line:
-            active_network_info.append(line.strip())
-        elif "IPv4 Address" in line or "Default Gateway" in line:
+        # Filter for relevant information: IPv4 Address, Subnet Mask, and Default Gateway
+        if "IPv4 Address" in line or "Subnet Mask" in line or "Default Gateway" in line:
             active_network_info.append(line.strip())
     return '\n'.join(active_network_info)
 
@@ -117,50 +115,6 @@ def get_routing_table():
             active_routes.append(line.strip())
     return '\n'.join(active_routes)
 
-@app.route('/', methods=['GET', 'POST'])
-def index():
-    """Main page to scan the network and display results."""
-    if request.method == 'POST':
-        ip_range = request.form['ip_range']
-        nmap_output = nmap_scan(ip_range)
-        devices = parse_nmap_output(nmap_output)
-
-        # Get the default gateway IP address
-        gateway_ip = get_default_gateway()
-        central_node = gateway_ip if gateway_ip else 'Unknown'
-
-        create_network_graph(devices, central_node)
-
-        # Save all output to a single text file
-        with open('network_analysis_output.txt', 'w') as file:
-            file.write("Windows IP Configuration (Active Network):\n")
-            file.write(get_network_information() + "\n")
-            
-            file.write("IPv4 Route Table (Active Routes):\n")
-            file.write(get_routing_table() + "\n")
-            
-            file.write("Discovered Devices:\n")
-            file.write("{:<20} {:<20} {:<20} {:<20}\n".format("IP Address", "MAC Address", "Hostname", "Vendor"))
-            file.write("-" * 80 + "\n")
-            for device in devices:
-                file.write("{:<20} {:<20} {:<20} {:<20}\n".format(
-                    device.get('ip_address', 'N/A'),
-                    device.get('mac_address', 'N/A'),
-                    device.get('hostname', 'N/A'),
-                    device.get('vendor', 'Unknown')
-                ))
-            
-            file.write("\nNmap Output:\n")
-            file.write(nmap_output + "\n")
-
-        return render_template('index.html', devices=devices, central_node=central_node, 
-                               network_info=get_network_information(), 
-                               routing_table=get_routing_table(), 
-                               nmap_output=nmap_output)
-
-    return render_template('index.html', devices=None, central_node=None, 
-                           network_info=None, routing_table=None, nmap_output=None)
-
 def get_default_gateway():
     """Get the default gateway IP address."""
     result = subprocess.run(['ipconfig'], capture_output=True, text=True)
@@ -171,5 +125,50 @@ def get_default_gateway():
             return gateway_ip
     return None
 
+@app.route('/')
+def index():
+    """Main page to scan the network and display results."""
+    gateway_ip = get_default_gateway()
+    if not gateway_ip:
+        return "Could not determine the default gateway.", 500
+    
+    subnet_mask = "255.255.255.0"  # Assuming a common subnet mask for simplicity
+    ip_range = f"{gateway_ip[:-1]}0/2"  # Calculate the IP range based on the gateway IP
+
+    nmap_output = nmap_scan(ip_range)
+    devices = parse_nmap_output(nmap_output)
+
+    central_node = gateway_ip if gateway_ip else 'Unknown'
+
+    create_network_graph(devices, central_node)
+
+    # Save all output to a single text file
+    with open('network_analysis_output.txt', 'w') as file:
+        file.write("Windows IP Configuration (Active Network):\n")
+        file.write(get_network_information() + "\n")
+        
+        file.write("IPv4 Route Table (Active Routes):\n")
+        file.write(get_routing_table() + "\n")
+        
+        file.write("Discovered Devices:\n")
+        file.write("{:<20} {:<20} {:<20} {:<20}\n".format("IP Address", "MAC Address", "Hostname", "Vendor"))
+        file.write("-" * 80 + "\n")
+        for device in devices:
+            file.write("{:<20} {:<20} {:<20} {:<20}\n".format(
+                device.get('ip_address', 'N/A'),
+                device.get('mac_address', 'N/A'),
+                device.get('hostname', 'N/A'),
+                device.get('vendor', 'Unknown')
+            ))
+        
+        file.write("\nNmap Output:\n")
+        file.write(nmap_output + "\n")
+
+    return render_template('index.html', devices=devices, central_node=central_node, 
+                           network_info=get_network_information(), 
+                           routing_table=get_routing_table(), 
+                           nmap_output=nmap_output)
+
 if __name__ == "__main__":
     app.run(debug=True)
+

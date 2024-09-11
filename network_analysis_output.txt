@@ -1,3 +1,4 @@
+Network Diagram
 Discovered Devices:
 IP Address           MAC Address          Hostname            
 ------------------------------------------------------------
@@ -8,7 +9,6 @@ Windows IP Configuration (Active Network):
 IPv4 Address. . . . . . . . . . . : 192.168.17.240
 Subnet Mask . . . . . . . . . . . : 255.255.255.0
 Default Gateway . . . . . . . . . : 192.168.17.81
-
 IPv4 Route Table (Active Routes):
 ===========================================================================
 ===========================================================================
@@ -20,11 +20,11 @@ Network Destination        Netmask          Gateway       Interface  Metric
 ===========================================================================
 
 Nmap Output:
-Starting Nmap 7.95 ( https://nmap.org ) at 2024-09-11 09:54 Sri Lanka Standard Time
+Starting Nmap 7.95 ( https://nmap.org ) at 2024-09-11 11:18 Sri Lanka Standard Time
 Nmap scan report for 192.168.17.81
-Host is up (0.0099s latency).
+Host is up (0.013s latency).
 MAC Address: 96:50:A1:9E:37:27 (Unknown)
 Nmap scan report for 192.168.17.240
 Host is up.
-Nmap done: 256 IP addresses (2 hosts up) scanned in 17.33 seconds
+Nmap done: 256 IP addresses (2 hosts up) scanned in 14.10 seconds
 

@@ -1,6 +1,8 @@
 import subprocess
 import re
 import networkx as nx
+import matplotlib
+matplotlib.use('Agg')  # Use a non-interactive backend
 import matplotlib.pyplot as plt
 from matplotlib.offsetbox import OffsetImage, AnnotationBbox
 from PIL import Image
@@ -28,7 +30,7 @@ def nmap_scan(ip_range):
     return result.stdout
 
 def parse_nmap_output(output):
-    """Parses the Nmap output and returns a list of devices with their IP addresses, MAC addresses, and hostnames."""
+    """Parses the Nmap output and returns a list of devices with their IP addresses, MAC addresses, hostnames, and vendor names."""
     devices = []
     lines = output.split('\n')
     ip_pattern = re.compile(r'\d+\.\d+\.\d+\.\d+')
@@ -45,9 +47,16 @@ def parse_nmap_output(output):
             if mac_address and devices:  # Ensure there's a device to append to
                 devices[-1]['mac_address'] = mac_address.group(1)
                 devices[-1]['hostname'] = mac_address.group(2)
-                # Remove vendor information
-                # devices[-1]['vendor'] = identify_vendor(mac_address.group(1))
+                devices[-1]['vendor'] = identify_vendor(mac_address.group(1))
     return devices
+
+def identify_vendor(mac_address):
+    """Identify the vendor name based on MAC address prefixes."""
+    mac_prefix = mac_address[:8]  # Get the first 8 characters (e.g., 00:1A:2B)
+    for vendor, prefixes in vendor_prefixes.items():
+        if any(mac_prefix.startswith(prefix) for prefix in prefixes):
+            return vendor
+    return 'Unknown'  # Return 'Unknown' if no vendor matches
 
 def create_network_graph(devices_info, central_node):
     """Creates and visualizes the network graph."""
@@ -137,6 +146,7 @@ def index():
 
     # Save all output to a single text file in the specified order
     with open('network_analysis_output.txt', 'w') as file:
+        file.write("Network Diagram\n")
         file.write("Discovered Devices:\n")
         file.write("{:<20} {:<20} {:<20}\n".format("IP Address", "MAC Address", "Hostname"))
         file.write("-" * 60 + "\n")
@@ -150,7 +160,7 @@ def index():
         file.write("\nWindows IP Configuration (Active Network):\n")
         file.write(get_network_information() + "\n")
         
-        file.write("\nIPv4 Route Table (Active Routes):\n")
+        file.write("IPv4 Route Table (Active Routes):\n")
         file.write(get_routing_table() + "\n")
         
         file.write("\nNmap Output:\n")

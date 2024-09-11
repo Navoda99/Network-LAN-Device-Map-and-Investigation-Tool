@@ -3,77 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Network-LAN-Device-Map-and-Investigation-Tool</title>
+    <title>Network LAN Device Map and Investigation Tool</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         body {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-family: Arial, sans-serif;
+            text-align: center; /* Center-align all text */
         }
-        
-        table {
-            width: 80%;
-            border-collapse: collapse;
+        header, footer {
+            margin: 20px 0; /* Add some space around header and footer */
         }
-        
-        th, td {
-            padding: 10px;
-            text-align: center;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        pre {
-            width: 80%;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            text-align: left;
-        }
-        
         img {
-            max-width: 100%;
+            max-width: 100%; /* Make the image responsive */
             height: auto;
+        }
+        table {
+            margin: 0 auto; /* Center the table */
+            border-collapse: collapse; /* Collapse borders */
+        }
+        th, td {
+            border: 1px solid #ddd; /* Add border to table cells */
+            padding: 8px; /* Add padding to table cells */
+        }
+        th {
+            background-color: #f2f2f2; /* Light gray background for header */
         }
     </style>
 </head>
 <body>
-    <h1>Network LAN Device Map and Investigation Tool</h1>
+    <header>
+        <h1>Network LAN Device Map and Investigation Tool</h1>
+    </header>
     
-
-    {% if devices %}
-        <h2>Network Diagram</h2>
-        <img src="{{ url_for('static', filename='network_diagram.png') }}" alt="Network Diagram">
-
-        <h2>Discovered Devices</h2>
-        <table border="1">
-            <tr>
-                <th>IP Address</th>
-                <th>MAC Address</th>
-                <th>Hostname</th>
-            </tr>
-            {% for device in devices %}
-            <tr>
-                <td>{{ device.ip_address }}</td>
-                <td>{{ device.mac_address }}</td>
-                <td>{{ device.hostname }}</td>
-            </tr>
-            {% endfor %}
-        </table>
-
-        <h2>Windows IP Configuration (Active Network)</h2>
-        <pre>{{ network_info }}</pre>
-
-        <h2>IPv4 Route Table (Active Routes)</h2>
-        <pre>{{ routing_table }}</pre>
-
-        <h2>Nmap Output</h2>
-        <pre>{{ nmap_output }}</pre>
-    {% endif %}
+    <main>
+        <section>
+            <h2>Network Diagram</h2>
+            <img src="{{ url_for('static', filename='network_diagram.png') }}" alt="Network Diagram">
+        </section>
+        
+        <section>
+            <h2>Discovered Devices</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>MAC Address</th>
+                        <th>Hostname</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for device in devices %}
+                    <tr>
+                        <td>{{ device.ip_address }}</td>
+                        <td>{{ device.mac_address }}</td>
+                        <td>{{ device.hostname }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+        
+        <section>
+            <h2>Network Information</h2>
+            <pre>{{ network_info }}</pre>
+        </section>
+        
+        <section>
+            <h2>Routing Table</h2>
+            <pre>{{ routing_table }}</pre>
+        </section>
+        
+        <section>
+            <h2>Nmap Output</h2>
+            <pre>{{ nmap_output }}</pre>
+        </section>
+    </main>
     
     <footer>
         <p>&copy; 2024 Network LAN Device Map and Investigation Tool</p>
     </footer>
-    
 </body>
 </html>

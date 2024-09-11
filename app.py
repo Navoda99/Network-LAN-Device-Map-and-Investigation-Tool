@@ -30,7 +30,7 @@ def nmap_scan(ip_range):
     return result.stdout
 
 def parse_nmap_output(output):
-    """Parses the Nmap output and returns a list of devices with their IP addresses, MAC addresses, hostnames, and vendor names."""
+    """Parses the Nmap output and returns a list of devices with their IP addresses, MAC addresses, and hostnames."""
     devices = []
     lines = output.split('\n')
     ip_pattern = re.compile(r'\d+\.\d+\.\d+\.\d+')

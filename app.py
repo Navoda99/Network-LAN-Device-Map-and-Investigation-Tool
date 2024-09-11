@@ -28,7 +28,7 @@ def nmap_scan(ip_range):
     return result.stdout
 
 def parse_nmap_output(output):
-    """Parses the Nmap output and returns a list of devices with their IP addresses, MAC addresses, hostnames, and vendor names."""
+    """Parses the Nmap output and returns a list of devices with their IP addresses, MAC addresses, and hostnames."""
     devices = []
     lines = output.split('\n')
     ip_pattern = re.compile(r'\d+\.\d+\.\d+\.\d+')
@@ -45,16 +45,9 @@ def parse_nmap_output(output):
             if mac_address and devices:  # Ensure there's a device to append to
                 devices[-1]['mac_address'] = mac_address.group(1)
                 devices[-1]['hostname'] = mac_address.group(2)
-                devices[-1]['vendor'] = identify_vendor(mac_address.group(1))
+                # Remove vendor information
+                # devices[-1]['vendor'] = identify_vendor(mac_address.group(1))
     return devices
-
-def identify_vendor(mac_address):
-    """Identify the vendor name based on MAC address prefixes."""
-    mac_prefix = mac_address[:8]  # Get the first 8 characters (e.g., 00:1A:2B)
-    for vendor, prefixes in vendor_prefixes.items():
-        if any(mac_prefix.startswith(prefix) for prefix in prefixes):
-            return vendor
-    return 'Unknown'  # Return 'Unknown' if no vendor matches
 
 def create_network_graph(devices_info, central_node):
     """Creates and visualizes the network graph."""
@@ -132,8 +125,8 @@ def index():
     if not gateway_ip:
         return "Could not determine the default gateway.", 500
     
-    subnet_mask = "255.255.255.0"  # Assuming a common subnet mask for simplicity
-    ip_range = f"{gateway_ip[:-1]}0/2"  # Calculate the IP range based on the gateway IP
+    subnet_mask = "255.255.240.0"  # Assuming a common subnet mask for simplicity
+    ip_range = f"{gateway_ip[:-1]}0/20"  # Calculate the IP range based on the gateway IP
 
     nmap_output = nmap_scan(ip_range)
     devices = parse_nmap_output(nmap_output)
@@ -142,24 +135,24 @@ def index():
 
     create_network_graph(devices, central_node)
 
-    # Save all output to a single text file
+    # Save all output to a single text file in the specified order
     with open('network_analysis_output.txt', 'w') as file:
-        file.write("Windows IP Configuration (Active Network):\n")
+        file.write("Network Diagram\n")
+        file.write("Discovered Devices:\n")
+        file.write("{:<20} {:<20} {:<20}\n".format("IP Address", "MAC Address", "Hostname"))
+        file.write("-" * 60 + "\n")
+        for device in devices:
+            file.write("{:<20} {:<20} {:<20}\n".format(
+                device.get('ip_address', 'N/A'),
+                device.get('mac_address', 'N/A'),
+                device.get('hostname', 'N/A')
+            ))
+        
+        file.write("\nWindows IP Configuration (Active Network):\n")
         file.write(get_network_information() + "\n")
         
         file.write("IPv4 Route Table (Active Routes):\n")
         file.write(get_routing_table() + "\n")
-        
-        file.write("Discovered Devices:\n")
-        file.write("{:<20} {:<20} {:<20} {:<20}\n".format("IP Address", "MAC Address", "Hostname", "Vendor"))
-        file.write("-" * 80 + "\n")
-        for device in devices:
-            file.write("{:<20} {:<20} {:<20} {:<20}\n".format(
-                device.get('ip_address', 'N/A'),
-                device.get('mac_address', 'N/A'),
-                device.get('hostname', 'N/A'),
-                device.get('vendor', 'Unknown')
-            ))
         
         file.write("\nNmap Output:\n")
         file.write(nmap_output + "\n")
@@ -171,4 +164,3 @@ def index():
 
 if __name__ == "__main__":
     app.run(debug=True)
-

@@ -42,20 +42,21 @@
     
 
     {% if devices %}
+        <h2>Network Diagram</h2>
+        <img src="{{ url_for('static', filename='network_diagram.png') }}" alt="Network Diagram">
+
         <h2>Discovered Devices</h2>
         <table border="1">
             <tr>
                 <th>IP Address</th>
                 <th>MAC Address</th>
                 <th>Hostname</th>
-                <th>Vendor</th>
             </tr>
             {% for device in devices %}
             <tr>
                 <td>{{ device.ip_address }}</td>
                 <td>{{ device.mac_address }}</td>
                 <td>{{ device.hostname }}</td>
-                <td>{{ device.vendor }}</td>
             </tr>
             {% endfor %}
         </table>
@@ -68,9 +69,11 @@
 
         <h2>Nmap Output</h2>
         <pre>{{ nmap_output }}</pre>
-
-        <h2>Network Diagram</h2>
-        <img src="{{ url_for('static', filename='network_diagram.png') }}" alt="Network Diagram">
     {% endif %}
+    
+    <footer>
+        <p>&copy; 2023 Network LAN Device Map and Investigation Tool</p>
+    </footer>
+    
 </body>
 </html>

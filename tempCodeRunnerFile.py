@@ -4,12 +4,14 @@ import networkx as nx
 import matplotlib
 matplotlib.use('Agg')  # Use a non-interactive backend
 import matplotlib.pyplot as plt
+from matplotlib.offsetbox import OffsetImage, AnnotationBbox
+from PIL import Image
 from flask import Flask, render_template
-from docx import Document  # Importing Document from python-docx
-import docx.shared  # Importing shared for image sizing
-from docx.enum.text import WD_PARAGRAPH_ALIGNMENT  # For alignment
 
 app = Flask(__name__)
+
+# Set the default image path for all devices
+default_image_path = r'static/images/default.png'
 
 # Dictionary to hold MAC address prefixes for vendor identification
 vendor_prefixes = {
@@ -33,7 +35,7 @@ def parse_nmap_output(output):
     lines = output.split('\n')
     ip_pattern = re.compile(r'\d+\.\d+\.\d+\.\d+')
     mac_pattern = re.compile(r'MAC Address: ([0-9a-fA-F:]+) \((.*?)\)')
-
+    
     for line in lines:
         if "Nmap scan report for" in line:
             ip_address = ip_pattern.search(line)
@@ -42,11 +44,10 @@ def parse_nmap_output(output):
                 devices.append(device)
         elif "MAC Address:" in line:
             mac_address = mac_pattern.search(line)
-            if mac_address and devices:
+            if mac_address and devices:  # Ensure there's a device to append to
                 devices[-1]['mac_address'] = mac_address.group(1)
                 devices[-1]['hostname'] = mac_address.group(2)
                 devices[-1]['vendor'] = identify_vendor(mac_address.group(1))
-    
     return devices
 
 def identify_vendor(mac_address):
@@ -63,157 +64,111 @@ def create_network_graph(devices_info, central_node):
     
     # Add central node
     G.add_node(central_node, device_type='Router')
-
+    
     # Add devices
     for device in devices_info:
         G.add_node(device['ip_address'], device_type='Device', vendor=device.get('vendor', 'Unknown'))
         G.add_edge(central_node, device['ip_address'])
-
-    pos = nx.spring_layout(G)  # Positioning of nodes
-
-    fig, ax = plt.subplots(figsize=(12, 8))
-
-    # Draw nodes and edges without images
-    nx.draw(G, pos, with_labels=False, node_size=3000, ax=ax)
-
-    # Draw labels with IP address and MAC address information
-    labels = {node: f"IP: {node}\nMAC: {device.get('mac_address', 'N/A')}" for device in devices_info for node in [device['ip_address']]}
     
-    nx.draw_networkx_labels(G, pos, labels, font_size=8, font_color='black', font_weight='bold', ax=ax)
-
+    pos = nx.spring_layout(G)
+    fig, ax = plt.subplots(figsize=(12, 8))
+    add_device_images(G, pos, ax, default_image_path)
+    
+    # Draw labels
+    labels = {node: f"{node}\n{G.nodes[node].get('vendor', 'Unknown')}" for node in G.nodes()}
+    nx.draw_networkx_labels(G, pos, labels, font_size=8, font_color='black', font_weight='bold', ax=ax, horizontalalignment='center')
+    
     plt.savefig('static/network_diagram.png')  # Save the network diagram to a file
     plt.close(fig)  # Close the figure to free up memory
+
+def add_device_images(G, pos, ax, default_image_path):
+    """Adds device images to the network graph."""
+    nx.draw(G, pos, with_labels=False, node_size=3000, ax=ax)
+    for node in G.nodes():
+        (x, y) = pos[node]
+        img_path = default_image_path  # Use the default image for all devices
+        try:
+            image = Image.open(img_path)
+            image.thumbnail((50, 50), Image.LANCZOS)
+            im = OffsetImage(image, zoom=1)
+            ab = AnnotationBbox(im, (x, y), frameon=False)
+            ax.add_artist(ab)
+        except FileNotFoundError:
+            print(f"Warning: Image file '{img_path}' not found.")
 
 def get_network_information():
     """Get Windows IP configuration information for the active network."""
     result = subprocess.run(['ipconfig'], capture_output=True, text=True)
     lines = result.stdout.split('\n')
-    
     active_network_info = []
-    
     for line in lines:
+        # Filter for relevant information: IPv4 Address, Subnet Mask, and Default Gateway
         if "IPv4 Address" in line or "Subnet Mask" in line or "Default Gateway" in line:
             active_network_info.append(line.strip())
-    
     return '\n'.join(active_network_info)
 
 def get_routing_table():
     """Get the IPv4 routing table with active routes."""
     result = subprocess.run(['route', 'print', '-4'], capture_output=True, text=True)
     lines = result.stdout.split('\n')
-    
     active_routes = []
-    
     for line in lines:
         if "===" in line or "Network Destination" in line or "0.0.0.0" in line:
             active_routes.append(line.strip())
-    
     return '\n'.join(active_routes)
 
 def get_default_gateway():
     """Get the default gateway IP address."""
     result = subprocess.run(['ipconfig'], capture_output=True, text=True)
     lines = result.stdout.split('\n')
-    
     for line in lines:
         if "Default Gateway" in line:
             gateway_ip = line.split(':')[1].strip()
             return gateway_ip
-    
     return None
-
-def create_word_document(devices, network_info, routing_table, nmap_output):
-   """Creates a Word document with network analysis results."""
-   
-   doc = Document()
-   
-   doc.add_heading('Network Analysis Report', level=1)
-
-   doc.add_heading('Network Information', level=2)
-   p_network_info = doc.add_paragraph(network_info)
-   p_network_info.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-   doc.add_heading('Routing Table', level=2)
-
-   routing_lines = routing_table.split('\n')
-   filtered_routing_data = []
-
-   headers = ['Network Destination', 'Netmask', 'Gateway', 'Interface', 'Metric']
-
-   for line in routing_lines:
-       if line.strip():  # Only process non-empty lines
-           parts = line.split()
-           if len(parts) >= 5 and not (parts[0] == "Network" and parts[1] == "Destination"):
-               filtered_routing_data.append(parts[:5])  # Only keep the first 5 elements
-
-   if filtered_routing_data:
-       table = doc.add_table(rows=1, cols=len(headers))
-       hdr_cells = table.rows[0].cells
-        
-       for i, header in enumerate(headers):
-           hdr_cells[i].text = header
-        
-       for row in filtered_routing_data:
-           row_cells = table.add_row().cells
-            
-           for i in range(len(row)):
-               row_cells[i].text = row[i]
-
-   doc.add_heading('Discovered Devices', level=2)
-   
-   device_table = doc.add_table(rows=1, cols=3)
-   
-   hdr_cells_device = device_table.rows[0].cells
-   hdr_cells_device[0].text = 'IP Address'
-   hdr_cells_device[1].text = 'MAC Address'
-   hdr_cells_device[2].text = 'Hostname'
-   
-   for device in devices:
-       row_cells_device = device_table.add_row().cells
-       row_cells_device[0].text = device.get('ip_address', 'N/A')
-       row_cells_device[1].text = device.get('mac_address', 'N/A')
-       row_cells_device[2].text = device.get('hostname', 'N/A')
-
-   doc.add_heading('Nmap Output', level=2)
-   p_nmap_output = doc.add_paragraph(nmap_output)
-   p_nmap_output.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
-
-   doc.add_heading('Network Diagram', level=2)
-   doc.add_picture('static/network_diagram.png', width=docx.shared.Inches(6))  # Adjust width as needed
-
-   # Save the document
-   doc.save('network_analysis_report.docx')
 
 @app.route('/')
 def index():
-   gateway_ip = get_default_gateway()
-   
-   if not gateway_ip:
-       return "Could not determine the default gateway.", 500
-   
-   subnet_mask = "255.255.255.0"
-   ip_range = f"{gateway_ip[:-1]}0/24"
-   
-   nmap_output = nmap_scan(ip_range)
-   
-   devices = parse_nmap_output(nmap_output)
-   
-   central_node = gateway_ip if gateway_ip else 'Unknown'
-   
-   create_network_graph(devices, central_node)
+    """Main page to scan the network and display results."""
+    gateway_ip = get_default_gateway()
+    if not gateway_ip:
+        return "Could not determine the default gateway.", 500
+    
+    subnet_mask = "255.255.255.0"  # Assuming a common subnet mask for simplicity
+    ip_range = f"{gateway_ip[:-1]}0/24"  # Calculate the IP range based on the gateway IP
 
-   network_info = get_network_information()
-   routing_table = get_routing_table()
+    nmap_output = nmap_scan(ip_range)
+    devices = parse_nmap_output(nmap_output)
 
-   # Create Word document with analysis results
-   create_word_document(devices, network_info, routing_table, nmap_output)
+    central_node = gateway_ip if gateway_ip else 'Unknown'
 
-   return render_template('index.html',
-                          devices=devices,
-                          central_node=central_node,
-                          network_info=network_info,
-                          routing_table=routing_table,
-                          nmap_output=nmap_output)
+    create_network_graph(devices, central_node)
+
+    # Save all output to a single text file in the specified order
+    with open('network_analysis_output.txt', 'w') as file:
+        file.write("Discovered Devices:\n")
+        file.write("{:<20} {:<20} {:<20}\n".format("IP Address", "MAC Address", "Hostname"))
+        file.write("-" * 60 + "\n")
+        for device in devices:
+            file.write("{:<20} {:<20} {:<20}\n".format(
+                device.get('ip_address', 'N/A'),
+                device.get('mac_address', 'N/A'),
+                device.get('hostname', 'N/A')
+            ))
+        
+        file.write("\nWindows IP Configuration (Active Network):\n")
+        file.write(get_network_information() + "\n")
+        
+        file.write("IPv4 Route Table (Active Routes):\n")
+        file.write(get_routing_table() + "\n")
+        
+        file.write("\nNmap Output:\n")
+        file.write(nmap_output + "\n")
+
+    return render_template('index.html', devices=devices, central_node=central_node, 
+                           network_info=get_network_information(), 
+                           routing_table=get_routing_table(), 
+                           nmap_output=nmap_output)
 
 if __name__ == "__main__":
-   app.run(debug=True)
+    app.run(debug=True)

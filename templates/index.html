@@ -41,13 +41,49 @@
         </section>
         
         <section>
+            <h2>Network Information</h2>
+            <pre>{{ network_info }}</pre>
+        </section>
+        
+        <section>
+            <h2>Routing Table</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Network Destination</th>
+                        <th>Netmask</th>
+                        <th>Gateway</th>
+                        <th>Interface</th>
+                        <th>Metric</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for line in routing_table.split('\n') %}
+                    {% if line.strip() %}
+                    {% set parts = line.split() %}
+                    {% if parts|length >= 5 and not (parts[0] == "Network" and parts[1] == "Destination") %}
+                    <tr>
+                        <td>{{ parts[0] }}</td>
+                        <td>{{ parts[1] }}</td>
+                        <td>{{ parts[2] }}</td>
+                        <td>{{ parts[3] }}</td>
+                        <td>{{ parts[4] }}</td>
+                    </tr>
+                    {% endif %}
+                    {% endif %}
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section>
             <h2>Discovered Devices</h2>
             <table>
                 <thead>
                     <tr>
                         <th>IP Address</th>
                         <th>MAC Address</th>
-                        <th>Hostname</th>
+                        <th>Vendor Name</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -61,25 +97,17 @@
                 </tbody>
             </table>
         </section>
-        
-        <section>
-            <h2>Network Information</h2>
-            <pre>{{ network_info }}</pre>
-        </section>
-        
-        <section>
-            <h2>Routing Table</h2>
-            <pre>{{ routing_table }}</pre>
-        </section>
-        
+
         <section>
             <h2>Nmap Output</h2>
             <pre>{{ nmap_output }}</pre>
         </section>
+
     </main>
-    
+
     <footer>
         <p>&copy; 2024 Network LAN Device Map and Investigation Tool</p>
     </footer>
+
 </body>
 </html>
